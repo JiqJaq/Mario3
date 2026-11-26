@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jom Celik Puasa: Pixel Ramadan Quest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Pixel & Kartun Mesra Kanak-kanak -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-night-top: #0b0726;
+            --bg-night-mid: #1d1147;
+            --bg-night-bot: #3c1e70;
+            --accent-gold: #ffd000;
+            --accent-pink: #ff2a85;
+            --accent-cyan: #00f0ff;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-night-top);
+            font-family: 'Fredoka', sans-serif;
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .font-pixel {
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        /* Gaya Butang Retro Pixel 3D */
+        .pixel-btn {
+            position: relative;
+            border: 4px solid #1a0b2e;
+            box-shadow: 0 6px 0 #1a0b2e, inset 0 4px 0 rgba(255,255,255,0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+            cursor: pointer;
+        }
+        .pixel-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #1a0b2e, inset 0 2px 0 rgba(255,255,255,0.4);
+        }
+
+        /* Bingkai Kad Soalan */
+        .pixel-modal {
+            background: linear-gradient(180deg, #271554 0%, #160a36 100%);
+            border: 4px solid #ff2a85;
+            box-shadow: 0 0 0 4px #120626, 0 15px 35px rgba(0,0,0,0.8);
+            border-radius: 20px;
+        }
+
+        /* Zon Drag and Drop */
+        .drop-zone {
+            border: 3px dashed #ffd000;
+            background: rgba(255, 208, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+        .drop-zone.drag-over {
+            background: rgba(255, 208, 0, 0.3);
+            transform: scale(1.03);
+            border-color: #00f0ff;
+        }
+
+        .draggable-item {
+            cursor: grab;
+            touch-action: none;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .draggable-item:active {
+            cursor: grabbing;
+            transform: scale(1.05);
+        }
+
+        /* Animasi Terapung */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        /* Canvas Responsif */
+        #game-wrapper {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: linear-gradient(180deg, #09051d 0%, #1e104a 55%, #46237a 100%);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HUD ATAS (Nyawa, Syiling, Tahap, Bunyi) -->
+    <header id="hud" class="hidden w-full bg-[#13082e]/90 border-b-4 border-[#ff2a85] px-3 py-2 flex items-center justify-between z-20 shadow-lg">
+        <!-- Nyawa (Hati) -->
+        <div class="flex items-center gap-2 bg-[#23114d] px-3 py-1.5 rounded-xl border-2 border-[#4e2a9e]">
+            <div id="hearts-container" class="flex gap-1 text-xl md:text-2xl">
+                <span>❤️</span><span>❤️</span><span>❤️</span>
+            </div>
+        </div>
+
+        <!-- Penunjuk Tahap & Kemajuan -->
+        <div class="flex flex-col items-center">
+            <span id="hud-level-badge" class="font-pixel text-[10px] md:text-xs text-[#ffd000] tracking-wider">TAHAP 1: ASAS</span>
+            <div class="flex items-center gap-1.5 mt-1">
+                <span class="text-xs text-purple-200 font-semibold">Pintu Ilmu:</span>
+                <div id="progress-dots" class="flex gap-1">
+                    <span class="w-3 h-3 rounded-full bg-gray-600 border border-white/40"></span>
+                    <span class="w-3 h-3 rounded-full bg-gray-600 border border-white/40"></span>
+                    <span class="w-3 h-3 rounded-full bg-gray-600 border border-white/40"></span>
+                    <span class="w-3 h-3 rounded-full bg-gray-600 border border-white/40"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Syiling & Butang Menu -->
+        <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 bg-[#23114d] px-3 py-1.5 rounded-xl border-2 border-[#ffd000]">
+                <span class="text-lg md:text-xl">🪙</span>
+                <span id="coin-count" class="font-pixel text-xs md:text-sm text-[#ffd000]">0</span>
+            </div>
+            <button onclick="toggleMute()" id="btn-mute" class="pixel-btn bg-purple-700 hover:bg-purple-600 text-white p-2 rounded-xl text-sm" title="Bunyi">
+                🔊
+            </button>
+            <button onclick="returnToMenu()" class="pixel-btn bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-2 rounded-xl font-bold text-xs md:text-sm">
+                Menu
+            </button>
+        </div>
+    </header>
+
+    <!-- KANVAS UTAMA PERMAINAN -->
+    <main id="game-wrapper">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- KAWALAN SENTUH (TOUCH CONTROLS) UNTUK TELEFON / TABLET -->
+        <div id="touch-controls" class="hidden fixed bottom-4 left-0 right-0 px-4 flex justify-between items-end pointer-events-none z-20">
+            <!-- Kiri & Kanan -->
+            <div class="flex gap-3 pointer-events-auto">
+                <button id="btn-left" class="pixel-btn w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-[#2c1663]/90 border-[#00f0ff] text-white text-3xl flex items-center justify-center active:bg-[#00f0ff] active:text-black">
+                    ◀
+                </button>
+                <button id="btn-right" class="pixel-btn w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-[#2c1663]/90 border-[#00f0ff] text-white text-3xl flex items-center justify-center active:bg-[#00f0ff] active:text-black">
+                    ▶
+                </button>
+            </div>
+
+            <!-- Lompat -->
+            <div class="pointer-events-auto">
+                <button id="btn-jump" class="pixel-btn w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-b from-[#ffd000] to-[#ff9100] text-[#1a0b2e] font-pixel text-xs md:text-sm flex flex-col items-center justify-center shadow-xl">
+                    <span class="text-2xl mb-1">▲</span>
+                    LOMPAT
+                </button>
+            </div>
+        </div>
+
+        <!-- MESEJ NOTIFIKASI RINGKAS (GANTI ALERT) -->
+        <div id="toast-msg" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-[#1a0b2e] border-2 border-[#ffd000] text-white px-5 py-2.5 rounded-full font-bold text-sm md:text-base shadow-2xl transition-all">
+            Mesej di sini
+        </div>
+
+        <!-- SKRIN UTAMA (TITLE SCREEN - TEMA GAMBAR RUJUKAN) -->
+        <div id="start-screen" class="absolute inset-0 flex flex-col items-center justify-center p-4 z-30 bg-[#0b0726]/75 backdrop-blur-xs overflow-y-auto">
+            <div class="max-w-2xl w-full text-center flex flex-col items-center my-auto">
+                
+                <!-- Lencana Bulan & Tanglung -->
+                <div class="flex items-center justify-center gap-3 mb-2 animate-float">
+                    <span class="text-4xl md:text-5xl">🏮</span>
+                    <span class="text-5xl md:text-6xl">🌙</span>
+                    <span class="text-4xl md:text-5xl">📖</span>
+                </div>
+
+                <!-- Tajuk Gaya Poster Pixel -->
+                <div class="bg-[#1b0d3d] border-4 border-[#ff2a85] rounded-3xl px-6 py-5 md:px-10 md:py-6 shadow-[0_0_0_5px_#0e0524,0_15px_30px_rgba(255,42,133,0.4)] mb-6 relative">
+                    <span class="inline-block bg-[#ffd000] text-[#1a0b2e] font-bold text-xs md:text-sm px-3 py-1 rounded-full mb-2 uppercase tracking-wider">
+                        Pendidikan Islam Tahun 5 & 6
+                    </span>
+                    <h1 class="font-pixel text-2xl sm:text-4xl md:text-5xl leading-snug text-transparent bg-clip-text bg-gradient-to-b from-white via-[#ffd000] to-[#ff8800] drop-shadow-[0_4px_0_#1a0b2e]">
+                        JOM CELIK<br>PUASA
+                    </h1>
+                    <p class="text-cyan-300 font-semibold text-sm md:text-base mt-2">
+                        Misi: Perkara-Perkara Yang Membatalkan Puasa
+                    </p>
+                </div>
+
+                <!-- Pemilihan Tahap Penguasaan Murid (TP) -->
+                <p class="text-purple-100 font-bold text-base md:text-lg mb-3">Pilih Tahap Penguasaan Kamu:</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 w-full max-w-xl mb-5">
+                    <!-- Tahap 1 -->
+                    <button onclick="startGame(1)" class="pixel-btn bg-gradient-to-b from-emerald-400 to-emerald-600 text-[#082618] p-4 rounded-2xl flex flex-col items-center text-center group">
+                        <span class="text-3xl mb-1 group-hover:scale-110 transition-transform">🌱</span>
+                        <span class="font-pixel text-xs mb-1">TAHAP 1</span>
+                        <span class="font-bold text-base">Asas (Pemulihan)</span>
+                        <span class="text-xs opacity-90 mt-1">Soalan mudah & bergambar</span>
+                    </button>
+
+                    <!-- Tahap 2 -->
+                    <button onclick="startGame(2)" class="pixel-btn bg-gradient-to-b from-amber-300 to-amber-500 text-[#2b1800] p-4 rounded-2xl flex flex-col items-center text-center group">
+                        <span class="text-3xl mb-1 group-hover:scale-110 transition-transform">⭐</span>
+                        <span class="font-pixel text-xs mb-1">TAHAP 2</span>
+                        <span class="font-bold text-base">Sederhana</span>
+                        <span class="text-xs opacity-90 mt-1">Situasi harian & padanan</span>
+                    </button>
+
+                    <!-- Tahap 3 -->
+                    <button onclick="startGame(3)" class="pixel-btn bg-gradient-to-b from-fuchsia-400 to-purple-600 text-white p-4 rounded-2xl flex flex-col items-center text-center group">
+                        <span class="text-3xl mb-1 group-hover:scale-110 transition-transform">👑</span>
+                        <span class="font-pixel text-xs mb-1 text-[#ffd000]">TAHAP 3</span>
+                        <span class="font-bold text-base">Cemerlang (KBAT)</span>
+                        <span class="text-xs opacity-90 mt-1">Analisis hukum & situasi</span>
+                    </button>
+                </div>
+
+                <!-- Panduan Ringkas -->
+                <div class="bg-[#150933]/90 border-2 border-purple-500/50 rounded-2xl px-4 py-3 text-xs md:text-sm text-purple-200 max-w-lg">
+                    <p>🎮 <strong>Cara Bermain:</strong> Gerakkan watak dengan kekunci <strong>Anak Panah / A, D</strong> atau butang skrin. Lompat atas pelantar terapung, kumpul syiling 🪙 dan buka semua <strong>4 Pintu Ilmu 📜</strong> menuju ke Masjid!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL SOALAN INTERAKTIF (KLIK & DRAG-AND-DROP) -->
+        <div id="question-modal" class="hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+            <div class="pixel-modal w-full max-w-2xl p-5 md:p-7 relative my-auto">
+                
+                <!-- Header Kad Soalan -->
+                <div class="flex items-center justify-between border-b-2 border-purple-700/70 pb-3 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">📖</span>
+                        <span id="q-type-badge" class="bg-[#ff2a85] text-white text-xs font-bold px-3 py-1 rounded-full uppercase">
+                            Soalan Klik
+                        </span>
+                    </div>
+                    <span id="q-number-badge" class="font-pixel text-xs text-[#ffd000]">SOALAN 1/4</span>
+                </div>
+
+                <!-- Teks Soalan -->
+                <div class="bg-[#12072b] border-2 border-purple-600/60 rounded-2xl p-4 mb-5">
+                    <p id="q-text" class="text-base md:text-xl font-bold text-white leading-relaxed">
+                        Soalan akan dipaparkan di sini...
+                    </p>
+                    <p id="q-instruction" class="text-xs md:text-sm text-cyan-300 mt-2 font-semibold">
+                        Arahan interaksi...
+                    </p>
+                </div>
+
+                <!-- KAWASAN 1: JAWAPAN KLIK (MCQ) -->
+                <div id="mcq-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Butang jawapan dijana oleh JS -->
+                </div>
+
+                <!-- KAWASAN 2: JAWAPAN DRAG & DROP (SERET & LEPAS) -->
+                <div id="dnd-container" class="hidden flex-col gap-4">
+                    <!-- Pilihan Item untuk Diseret -->
+                    <div id="dnd-items" class="flex flex-wrap justify-center gap-2.5 bg-[#110629] p-3 rounded-2xl border-2 border-purple-800">
+                        <!-- Kad seret dijana oleh JS -->
+                    </div>
+
+                    <!-- Zon Lepas (Drop Zones) -->
+                    <div id="dnd-zones" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- Zon sasaran dijana oleh JS -->
+                    </div>
+
+                    <button onclick="checkDragAndDrop()" id="btn-submit-dnd" class="pixel-btn bg-gradient-to-r from-[#ffd000] to-[#ff9500] text-[#1a0b2e] font-bold py-3 px-6 rounded-xl text-base md:text-lg mt-1">
+                        Semak Jawapan ✔
+                    </button>
+                </div>
+
+                <!-- Maklum Balas / Penerangan Guru -->
+                <div id="q-feedback" class="hidden mt-4 p-4 rounded-2xl border-2 text-sm md:text-base font-semibold">
+                    <p id="q-feedback-title" class="font-bold text-lg mb-1"></p>
+                    <p id="q-feedback-desc" class="font-normal text-white/95"></p>
+                    <button onclick="closeQuestionModal()" id="btn-continue" class="pixel-btn mt-3 bg-cyan-400 text-[#09182e] font-bold px-5 py-2 rounded-xl text-sm">
+                        Teruskan Pengembaraan ▶
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SKRIN TAMAT / KEMENANGAN -->
+        <div id="end-screen" class="hidden fixed inset-0 z-50 bg-[#0b0726]/90 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="pixel-modal max-w-lg w-full p-6 md:p-8 text-center">
+                <div id="end-icon" class="text-6xl mb-3 animate-float">🕌</div>
+                <h2 id="end-title" class="font-pixel text-xl md:text-2xl text-[#ffd000] mb-2 leading-relaxed">
+                    TAHNIAH! MISI SELESAI
+                </h2>
+                <p id="end-subtitle" class="text-purple-200 text-sm md:text-base mb-5">
+                    Kamu berjaya tiba di Masjid Cahaya Ramadan dengan ilmu yang mantap!
+                </p>
+
+                <div class="bg-[#12072b] border-2 border-purple-600 rounded-2xl p-4 mb-6 flex justify-around">
+                    <div>
+                        <p class="text-xs text-purple-300">Syiling Terkumpul</p>
+                        <p id="end-coins" class="font-pixel text-lg text-[#ffd000] mt-1">0</p>
+                    </div>
+                    <div class="border-l border-purple-700"></div>
+                    <div>
+                        <p class="text-xs text-purple-300">Tahap Penguasaan</p>
+                        <p id="end-level" class="font-bold text-lg text-cyan-300 mt-1">Tahap 1</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button onclick="restartCurrentLevel()" class="pixel-btn bg-emerald-500 text-[#062415] font-bold py-3 px-5 rounded-xl">
+                        Main Semula 🔄
+                    </button>
+                    <button onclick="returnToMenu()" class="pixel-btn bg-[#ff2a85] text-white font-bold py-3 px-5 rounded-xl">
+                        Pilih Tahap Lain 🏠
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /**
+         * ============================================================================
+         * ENJIN AUDIO SINTETIK & MUZIK LATAR RAMADAN (WEB AUDIO API)
+         * ============================================================================
+         */
+        let audioCtx = null;
+        let isMuted = false;
+        let bgmInterval = null;
+        let bgmStep = 0;
+
+        // Melodi ceria berunsur Timur Tengah / Hijaz untuk latar permainan
+        const BGM_MELODY = [
+            { f: 329.63, d: 0.25 }, // E4
+            { f: 349.23, d: 0.25 }, // F4
+            { f: 415.30, d: 0.50 }, // G#4
+            { f: 440.00, d: 0.25 }, // A4
+            { f: 493.88, d: 0.25 }, // B4
+            { f: 523.25, d: 0.50 }, // C5
+            { f: 493.88, d: 0.25 }, // B4
+            { f: 440.00, d: 0.25 }, // A4
+            { f: 415.30, d: 0.50 }, // G#4
+            { f: 349.23, d: 0.25 }, // F4
+            { f: 329.63, d: 0.50 }, // E4
+            { f: 0,      d: 0.25 }, // Rehat
+            { f: 440.00, d: 0.25 }, // A4
+            { f: 415.30, d: 0.25 }, // G#4
+            { f: 349.23, d: 0.25 }, // F4
+            { f: 329.63, d: 0.50 }  // E4
+        ];
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function startBGM() {
+            stopBGM();
+            initAudio();
+            bgmStep = 0;
+            bgmInterval = setInterval(() => {
+                if (isMuted || (gameState !== 'PLAYING' && gameState !== 'QUESTION')) return;
+                try {
+                    const note = BGM_MELODY[bgmStep % BGM_MELODY.length];
+                    if (note.f > 0) {
+                        const now = audioCtx.currentTime;
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle'; // Bunyi lembut seperti alat muzik gambus/seruling
+                        osc.frequency.setValueAtTime(note.f, now);
+
+                        // Kelantangan perlahan supaya tidak mengganggu tumpuan membaca soalan
+                        const vol = gameState === 'QUESTION' ? 0.025 : 0.045;
+                        gain.gain.setValueAtTime(vol, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.29);
+                    }
+                    bgmStep++;
+                } catch (e) {
+                    console.warn('BGM error:', e);
+                }
+            }, 320);
+        }
+
+        function stopBGM() {
+            if (bgmInterval) {
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+
+        function playSound(type) {
+            if (isMuted) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'jump') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.exponentialRampToValueAtTime(480, now + 0.15);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'coin') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(987.77, now); // B5
+                    osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'correct') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                    osc.frequency.setValueAtTime(1046.50, now + 0.3); // C6
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.linearRampToValueAtTime(130, now + 0.3);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'win') {
+                    const notes = [523.25, 659.25, 783.99, 1046.50, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.type = 'square';
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.frequency.setValueAtTime(freq, now + idx * 0.12);
+                        g.gain.setValueAtTime(0.08, now + idx * 0.12);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.11);
+                        o.start(now + idx * 0.12);
+                        o.stop(now + idx * 0.12 + 0.11);
+                    });
+                }
+            } catch (e) {
+                console.warn('Audio error:', e);
+            }
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            document.getElementById('btn-mute').innerText = isMuted ? '🔇' : '🔊';
+            showToast(isMuted ? 'Muzik & Bunyi Dimatikan 🔇' : 'Muzik & Bunyi Diaktifkan 🎵');
+        }
+
+        /**
+         * ============================================================================
+         * BANK SOALAN PENDIDIKAN ISLAM TAHUN 5 & 6 (MENGIKUT TAHAP PENGUASAAN)
+         * ============================================================================
+         */
+        const QUESTION_BANK = {
+            // TAHAP 1: ASAS / LEMAH (Soalan mudah, terus & bergambar)
+            1: [
+                {
+                    type: 'click',
+                    question: 'Manakah antara perbuatan berikut yang MEMBATALKAN puasa?',
+                    instruction: 'Klik pada jawapan yang betul.',
+                    options: [
+                        { text: '🍔 Makan dan minum dengan sengaja', correct: true },
+                        { text: '🚿 Mandi pada waktu tengah hari', correct: false },
+                        { text: '😴 Tidur pada waktu siang', correct: false },
+                        { text: '📖 Membaca Al-Quran di masjid', correct: false }
+                    ],
+                    explanation: 'Makan dan minum dengan sengaja pada siang hari bulan Ramadan membatalkan puasa.'
+                },
+                {
+                    type: 'dnd',
+                    question: 'Asingkan perbuatan yang MEMBATALKAN puasa dan TIDAK MEMBATALKAN puasa.',
+                    instruction: 'Seret (Drag) setiap kad ke dalam kotak yang betul.',
+                    items: [
+                        { id: 't1_1', text: '🥤 Minum air sirap dengan sengaja', target: 'batal' },
+                        { id: 't1_2', text: '🤮 Muntah dengan sengaja', target: 'batal' },
+                        { id: 't1_3', text: '🚿 Mandi untuk menyegarkan badan', target: 'sah' },
+                        { id: 't1_4', text: '💧 Berkumur ketika mengambil wuduk', target: 'sah' }
+                    ],
+                    zones: [
+                        { id: 'batal', title: '❌ Membatalkan Puasa' },
+                        { id: 'sah', title: '✅ Tidak Membatalkan Puasa' }
+                    ],
+                    explanation: 'Minum dan muntah dengan sengaja membatalkan puasa, manakala mandi dan berkumur wuduk tidak membatalkan puasa.'
+                },
+                {
+                    type: 'click',
+                    question: 'Apakah hukum puasa seseorang yang pengsan atau pitam sepanjang hari dari terbit fajar hingga terbenam matahari?',
+                    instruction: 'Klik pada jawapan yang betul.',
+                    options: [
+                        { text: '❌ Batal puasanya', correct: true },
+                        { text: '✅ Sah puasanya', correct: false },
+                        { text: '⚠️ Makruh sahaja', correct: false },
+                        { text: '🌟 Mendapat pahala berganda', correct: false }
+                    ],
+                    explanation: 'Pengsan atau pitam sepanjang hari membatalkan puasa kerana hilang akal/kesedaran sepanjang waktu berpuasa.'
+                },
+                {
+                    type: 'dnd',
+                    question: 'Padankan perkara yang membatalkan puasa di bawah:',
+                    instruction: 'Seret jawapan ke kotak yang sesuai.',
+                    items: [
+                        { id: 't1_5', text: '🩸 Keluar darah haid atau nifas', target: 'batal' },
+                        { id: 't1_6', text: '🧠 Gila atau hilang akal', target: 'batal' },
+                        { id: 't1_7', text: '🤤 Tertelan air liur sendiri', target: 'sah' },
+                        { id: 't1_8', text: '👃 Terhidu bau masakan ibu', target: 'sah' }
+                    ],
+                    zones: [
+                        { id: 'batal', title: '❌ Membatalkan Puasa' },
+                        { id: 'sah', title: '✅ Tidak Membatalkan Puasa' }
+                    ],
+                    explanation: 'Keluar darah haid/nifas dan hilang akal membatalkan puasa. Menelan air liur sendiri dan terhidu bau tidak membatalkan puasa.'
+                }
+            ],
+
+            // TAHAP 2: SEDERHANA (Situasi harian murid sekolah rendah)
+            2: [
+                {
+                    type: 'click',
+                    question: 'Ahmad memasukkan jarinya ke dalam tekak supaya dia muntah kerana perutnya terasa kurang selesa. Apakah status puasa Ahmad?',
+                    instruction: 'Klik pada jawapan yang betul.',
+                    options: [
+                        { text: '❌ Batal kerana muntah dengan sengaja', correct: true },
+                        { text: '✅ Sah kerana dia sedang sakit perut', correct: false },
+                        { text: '✅ Sah jika muntahnya sedikit sahaja', correct: false },
+                        { text: '⚠️ Makruh tetapi tidak batal', correct: false }
+                    ],
+                    explanation: 'Muntah dengan sengaja membatalkan puasa. Namun, jika muntah secara tidak sengaja (tiba-tiba), puasanya tetap sah.'
+                },
+                {
+                    type: 'dnd',
+                    question: 'Kelaskan situasi memasukkan sesuatu ke dalam rongga terbuka berikut:',
+                    instruction: 'Seret situasi ke kategori hukum yang tepat.',
+                    items: [
+                        { id: 's1', text: '👃 Memasukkan air ke dalam hidung secara berlebihan hingga ke otak', target: 'batal' },
+                        { id: 's2', text: '💉 Menerima suntikan ubat di bahu oleh doktor', target: 'tidak' },
+                        { id: 's3', text: '🚬 Menghisap rokok atau vape pada siang hari', target: 'batal' },
+                        { id: 's4', text: '👁️ Menitikkan ubat titis mata', target: 'tidak' }
+                    ],
+                    zones: [
+                        { id: 'batal', title: '❌ Membatalkan Puasa' },
+                        { id: 'tidak', title: '✅ Tidak Membatalkan' }
+                    ],
+                    explanation: 'Hidung dan mulut ialah rongga terbuka yang menuju ke dalam badan. Mata dan suntikan di kulit bukan rongga terbuka yang membatalkan puasa.'
+                },
+                {
+                    type: 'click',
+                    question: 'Aisyah sedang berpuasa. Pada pukul 5:30 petang, dia mendapati ada darah haid keluar. Apakah yang perlu Aisyah lakukan?',
+                    instruction: 'Klik pada tindakan yang betul.',
+                    options: [
+                        { text: 'Puasanya terbatal dan wajib qada selepas Ramadan', correct: true },
+                        { text: 'Teruskan berpuasa kerana waktu berbuka sudah dekat', correct: false },
+                        { text: 'Puasanya tetap sah dan tidak perlu qada', correct: false },
+                        { text: 'Wajib membayar fidyah sahaja tanpa qada', correct: false }
+                    ],
+                    explanation: 'Apabila keluar darah haid walaupun seminit sebelum azan Maghrib, puasa terbatal serta-merta dan wajib diganti (qada).'
+                },
+                {
+                    type: 'dnd',
+                    question: 'Susun dan padankan hukum bagi situasi murid di bawah:',
+                    instruction: 'Seret situasi ke kotak SAH atau BATAL.',
+                    items: [
+                        { id: 'k1', text: '💦 Berkumur-kumur ketika berwuduk lalu tertelan air tanpa sengaja', target: 'sah' },
+                        { id: 'k2', text: '🥤 Berkumur-kumur dengan air sirap lalu tertelan sedikit', target: 'batal' },
+                        { id: 'k3', text: '🤤 Tertelan air liur sendiri yang bersih di dalam mulut', target: 'sah' },
+                        { id: 'k4', text: '🩸 Mengorek telinga dengan putik kapas hingga melepasi had dalam', target: 'batal' }
+                    ],
+                    zones: [
+                        { id: 'sah', title: '✅ Puasa Sah' },
+                        { id: 'batal', title: '❌ Puasa Batal' }
+                    ],
+                    explanation: 'Berkumur wuduk yang tidak berlebihan jika tertelan tidak sengaja dimaafkan. Namun berkumur air manis adalah perbuatan sia-sia yang membatalkan puasa jika tertelan.'
+                }
+            ],
+
+            // TAHAP 3: CEMERLANG / KBAT (Analisis mendalam & situasi kompleks)
+            3: [
+                {
+                    type: 'click',
+                    question: 'Ali terlewat bangun sahur. Dia menyangka waktu Subuh belum masuk lalu terus minum segelas air. Tiba-tiba dia menyedari azan Subuh telah berkumandang 10 minit yang lalu. Apakah hukum puasanya?',
+                    instruction: 'Analisis situasi berikut dan klik jawapan yang tepat.',
+                    options: [
+                        { text: '❌ Batal puasanya dan wajib diqada', correct: true },
+                        { text: '✅ Sah kerana dia tidak tahu waktu Subuh sudah masuk', correct: false },
+                        { text: '✅ Sah kerana dia baru bangun tidur', correct: false },
+                        { text: '⚠️ Batal dan wajib bayar kaffarah', correct: false }
+                    ],
+                    explanation: 'Makan atau minum selepas masuk waktu Subuh kerana tersilap sangka waktu membatalkan puasa kerana cuai tidak menyemak waktu, dan wajib diqada.'
+                },
+                {
+                    type: 'dnd',
+                    question: 'Analisis KBAT: Bezakan perkara yang MEMBATALKAN puasa dengan perkara yang MAKRUH sahaja ketika berpuasa.',
+                    instruction: 'Seret setiap situasi ke kotak yang tepat.',
+                    items: [
+                        { id: 'm1', text: '🍲 Ibu merasa masakan di hujung lidah tanpa menelannya', target: 'makruh' },
+                        { id: 'm2', text: '💊 Menelan ubat demam kerana sakit kepala yang kuat', target: 'batal' },
+                        { id: 'm3', text: '🪥 Memberus gigi menggunakan ubat gigi selepas gelincir matahari', target: 'makruh' },
+                        { id: 'm4', text: '🌊 Menyelam di sungai sehingga air masuk ke dalam telinga dalam', target: 'batal' }
+                    ],
+                    zones: [
+                        { id: 'batal', title: '❌ Membatalkan Puasa' },
+                        { id: 'makruh', title: '⚠️ Makruh (Puasa Sah)' }
+                    ],
+                    explanation: 'Merasa makanan di hujung lidah tanpa menelan dan bersugi selepas Zuhur adalah makruh (mengurangkan pahala) tetapi tidak membatalkan puasa.'
+                },
+                {
+                    type: 'click',
+                    question: 'Mengapakah perbuatan murtad (keluar daripada agama Islam) walaupun sekejap membatalkan puasa seseorang?',
+                    instruction: 'Klik pada hujah syarak yang paling tepat.',
+                    options: [
+                        { text: 'Kerana Islam ialah syarat sah ibadah puasa', correct: true },
+                        { text: 'Kerana dia tidak membaca niat puasa', correct: false },
+                        { text: 'Kerana dia tidak bersahur pada malamnya', correct: false },
+                        { text: 'Kerana perbuatan itu hanya makruh sahaja', correct: false }
+                    ],
+                    explanation: 'Syarat sah puasa yang pertama ialah beragama Islam. Jika seseorang murtad, terbatal semua amal ibadahnya termasuk puasa.'
+                },
+                {
+                    type: 'dnd',
+                    question: 'Selesaikan padanan situasi dan implikasi hukum puasa berikut:',
+                    instruction: 'Seret implikasi hukum yang tepat ke setiap situasi.',
+                    items: [
+                        { id: 'h1', text: 'Batal puasa & wajib Qada sahaja', target: 'sit1' },
+                        { id: 'h2', text: 'Puasa sah & diteruskan seperti biasa', target: 'sit2' },
+                        { id: 'h3', text: 'Batal puasa, wajib Qada & Kaffarah', target: 'sit3' }
+                    ],
+                    zones: [
+                        { id: 'sit1', title: 'Situasi A: Pitam sepanjang hari Ramadan' },
+                        { id: 'sit2', title: 'Situasi B: Termakan nasi kerana terlupa' },
+                        { id: 'sit3', title: 'Situasi C: Bersetubuh di siang hari Ramadan' }
+                    ],
+                    explanation: 'Hebat! Kamu berjaya membezakan kesan hukum antara uzur syarie, terlupa, dan pelanggaran berat dalam ibadah puasa.'
+                }
+            ]
+        };
+
+        /**
+         * ============================================================================
+         * PEMBOLEHUBAH KEADAAN PERMAINAN (GAME STATE)
+         * ============================================================================
+         */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let gameState = 'MENU'; // MENU, PLAYING, QUESTION, GAMEOVER, WIN
+        let currentLevel = 1;
+        let lives = 3;
+        let coins = 0;
+        let unlockedGates = 0;
+        let activeGateIndex = -1;
+        let animationFrameId = null;
+
+        // Input kekunci & sentuh
+        const keys = { left: false, right: false, up: false };
+
+        // Kamera
+        let cameraX = 0;
+        const WORLD_WIDTH = 3400;
+        let groundY = 500;
+
+        // Objek Dunia
+        let player = {};
+        let catCompanion = {};
+        let platforms = [];
+        let coinItems = [];
+        let gates = [];
+        let stars = [];
+        let clouds = [];
+        let particles = [];
+
+        /**
+         * ============================================================================
+         * INISIALISASI & SAIZ KANVAS RESPONSIF
+         * ============================================================================
+         */
+        function resizeCanvas() {
+            const wrapper = document.getElementById('game-wrapper');
+            canvas.width = wrapper.clientWidth;
+            canvas.height = wrapper.clientHeight;
+            groundY = canvas.height - 90;
+            generateBackgroundDecor();
+        }
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (gameState === 'PLAYING' || gameState === 'QUESTION') {
+                repositionLevelElements();
+            }
+        });
+
+        function generateBackgroundDecor() {
+            stars = [];
+            for (let i = 0; i < 70; i++) {
+                stars.push({
+                    x: Math.random() * WORLD_WIDTH,
+                    y: Math.random() * (canvas.height * 0.65),
+                    size: Math.random() > 0.7 ? 4 : 2,
+                    twinkle: Math.random() * Math.PI * 2
+                });
+            }
+            clouds = [];
+            for (let i = 0; i < 16; i++) {
+                clouds.push({
+                    x: i * 240 + Math.random() * 80,
+                    y: canvas.height * 0.45 + Math.random() * 90,
+                    w: 110 + Math.random() * 70,
+                    h: 35 + Math.random() * 20
+                });
+            }
+        }
+
+        /**
+         * ============================================================================
+         * MEMBINA TAHAP & LALUAN PELANTAR TERAPUNG (SEPERTI DALAM GAMBAR)
+         * ============================================================================
+         */
+        function buildWorld() {
+            groundY = canvas.height - 90;
+
+            player = {
+                x: 80,
+                y: groundY - 56,
+                w: 36,
+                h: 52,
+                vx: 0,
+                vy: 0,
+                speed: 5.2,
+                jumpPower: -13.5,
+                grounded: false,
+                facing: 1,
+                walkFrame: 0
+            };
+
+            // Kucing Oren Comel mengikut watak (seperti dalam poster!)
+            catCompanion = {
+                x: 40,
+                y: groundY - 28,
+                w: 26,
+                h: 24,
+                facing: 1
+            };
+
+            // Pelantar tanah & batu terapung bercahaya ungu-emas
+            platforms = [
+                // Tanah Permulaan
+                { x: 0, y: groundY, w: 420, h: 120, type: 'ground' },
+                // Pelantar terapung ke Pintu 1
+                { x: 470, y: groundY - 75, w: 130, h: 28, type: 'floating' },
+                { x: 650, y: groundY - 140, w: 150, h: 28, type: 'floating' },
+                // Tanah Checkpoint 1
+                { x: 860, y: groundY - 40, w: 280, h: 160, type: 'ground' },
+                // Pelantar terapung ke Pintu 2
+                { x: 1200, y: groundY - 110, w: 130, h: 28, type: 'floating' },
+                { x: 1390, y: groundY - 180, w: 130, h: 28, type: 'floating' },
+                // Tanah Checkpoint 2
+                { x: 1580, y: groundY - 60, w: 290, h: 180, type: 'ground' },
+                // Pelantar terapung ke Pintu 3
+                { x: 1930, y: groundY - 130, w: 130, h: 28, type: 'floating' },
+                { x: 2120, y: groundY - 70, w: 140, h: 28, type: 'floating' },
+                // Tanah Checkpoint 3
+                { x: 2320, y: groundY - 40, w: 280, h: 160, type: 'ground' },
+                // Pelantar tangga bercahaya menuju ke Masjid (Pintu 4 & Garisan Tamat)
+                { x: 2660, y: groundY - 100, w: 120, h: 28, type: 'floating' },
+                { x: 2830, y: groundY - 160, w: 120, h: 28, type: 'floating' },
+                // Pulau Masjid Cahaya Ramadan
+                { x: 3000, y: groundY - 160, w: 400, h: 280, type: 'mosque_island' }
+            ];
+
+            // 4 Pintu Ilmu (Buku Al-Quran / Kitab Bercahaya) yang mengunci laluan
+            gates = [
+                { id: 0, x: 1030, y: groundY - 125, w: 54, h: 85, unlocked: false },
+                { id: 1, x: 1750, y: groundY - 145, w: 54, h: 85, unlocked: false },
+                { id: 2, x: 2490, y: groundY - 125, w: 54, h: 85, unlocked: false },
+                { id: 3, x: 3050, y: groundY - 245, w: 54, h: 85, unlocked: false }
+            ];
+
+            // Syiling Emas Ramadan untuk dikumpul
+            coinItems = [
+                { x: 260, y: groundY - 45, collected: false },
+                { x: 320, y: groundY - 45, collected: false },
+                { x: 525, y: groundY - 125, collected: false },
+                { x: 715, y: groundY - 190, collected: false },
+                { x: 920, y: groundY - 90, collected: false },
+                { x: 1255, y: groundY - 160, collected: false },
+                { x: 1445, y: groundY - 230, collected: false },
+                { x: 1640, y: groundY - 110, collected: false },
+                { x: 1985, y: groundY - 180, collected: false },
+                { x: 2180, y: groundY - 120, collected: false },
+                { x: 2380, y: groundY - 90, collected: false },
+                { x: 2710, y: groundY - 150, collected: false },
+                { x: 2880, y: groundY - 210, collected: false }
+            ];
+        }
+
+        function repositionLevelElements() {
+            // Laras ketinggian apabila skrin berubah orientasi
+            const oldGround = groundY;
+            groundY = canvas.height - 90;
+            const diff = groundY - oldGround;
+            player.y += diff;
+            catCompanion.y += diff;
+            platforms.forEach(p => p.y += diff);
+            gates.forEach(g => g.y += diff);
+            coinItems.forEach(c => c.y += diff);
+        }
+
+        /**
+         * ============================================================================
+         * KAWALAN PERMAINAN (MULA, MENU, RETRY)
+         * ============================================================================
+         */
+        function startGame(level) {
+            initAudio();
+            currentLevel = level;
+            lives = 3;
+            coins = 0;
+            unlockedGates = 0;
+            activeGateIndex = -1;
+            cameraX = 0;
+
+            resizeCanvas();
+            buildWorld();
+            updateHUD();
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('end-screen').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('touch-controls').classList.remove('hidden');
+
+            const levelNames = {
+                1: 'TAHAP 1: ASAS',
+                2: 'TAHAP 2: SEDERHANA',
+                3: 'TAHAP 3: CEMERLANG'
+            };
+            document.getElementById('hud-level-badge').innerText = levelNames[level];
+
+            gameState = 'PLAYING';
+            startBGM();
+            showToast('Mula! Kumpul syiling & buka semua Pintu Ilmu 📜');
+
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            gameLoop();
+        }
+
+        function restartCurrentLevel() {
+            startGame(currentLevel);
+        }
+
+        function returnToMenu() {
+            gameState = 'MENU';
+            stopBGM();
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('touch-controls').classList.add('hidden');
+            document.getElementById('question-modal').classList.add('hidden');
+            document.getElementById('end-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        function updateHUD() {
+            // Kemas kini Hati
+            const heartsEl = document.getElementById('hearts-container');
+            let heartsHTML = '';
+            for (let i = 0; i < 3; i++) {
+                heartsHTML += i < lives ? '<span>❤️</span>' : '<span class="opacity-30">🖤</span>';
+            }
+            heartsEl.innerHTML = heartsHTML;
+
+            // Kemas kini Syiling
+            document.getElementById('coin-count').innerText = coins;
+
+            // Kemas kini Titik Kemajuan Pintu Ilmu
+            const dotsEl = document.getElementById('progress-dots');
+            let dotsHTML = '';
+            for (let i = 0; i < 4; i++) {
+                if (i < unlockedGates) {
+                    dotsHTML += '<span class="w-3.5 h-3.5 rounded-full bg-[#ffd000] border border-white shadow-[0_0_8px_#ffd000]"></span>';
+                } else {
+                    dotsHTML += '<span class="w-3.5 h-3.5 rounded-full bg-gray-700 border border-white/40"></span>';
+                }
+            }
+            dotsEl.innerHTML = dotsHTML;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast-msg');
+            toast.innerText = msg;
+            toast.classList.remove('hidden');
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 2600);
+        }
+
+        /**
+         * ============================================================================
+         * INPUT KEYBOARD & TOUCH SCREEN
+         * ============================================================================
+         */
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== 'PLAYING') return;
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+            if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') {
+                if (player.grounded) {
+                    player.vy = player.jumpPower;
+                    player.grounded = false;
+                    playSound('jump');
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+        });
+
+        // Pengikatan Butang Sentuh (Touch & Mouse)
+        function bindTouchButton(id, actionKey, isJump = false) {
+            const btn = document.getElementById(id);
+            const startAction = (e) => {
+                e.preventDefault();
+                if (gameState !== 'PLAYING') return;
+                if (isJump) {
+                    if (player.grounded) {
+                        player.vy = player.jumpPower;
+                        player.grounded = false;
+                        playSound('jump');
+                    }
+                } else {
+                    keys[actionKey] = true;
+                }
+            };
+            const endAction = (e) => {
+                e.preventDefault();
+                if (!isJump) keys[actionKey] = false;
+            };
+
+            btn.addEventListener('touchstart', startAction, { passive: false });
+            btn.addEventListener('touchend', endAction, { passive: false });
+            btn.addEventListener('mousedown', startAction);
+            btn.addEventListener('mouseup', endAction);
+            btn.addEventListener('mouseleave', endAction);
+        }
+
+        bindTouchButton('btn-left', 'left', false);
+        bindTouchButton('btn-right', 'right', false);
+        bindTouchButton('btn-jump', 'up', true);
+
+        /**
+         * ============================================================================
+         * LOGIK FIZIK & PERLANGGARAN (UPDATE LOOP)
+         * ============================================================================
+         */
+        function update() {
+            if (gameState !== 'PLAYING') return;
+
+            // Pergerakan mendatar watak
+            if (keys.left) {
+                player.vx = -player.speed;
+                player.facing = -1;
+                player.walkFrame += 0.2;
+            } else if (keys.right) {
+                player.vx = player.speed;
+                player.facing = 1;
+                player.walkFrame += 0.2;
+            } else {
+                player.vx = 0;
+                player.walkFrame = 0;
+            }
+
+            player.x += player.vx;
+            if (player.x < 10) player.x = 10;
+
+            // Sekatan Pintu Ilmu berkunci (Murid mesti jawab soalan untuk lalu)
+            gates.forEach((gate, index) => {
+                if (!gate.unlocked) {
+                    // Jika watak menyentuh pintu berkunci
+                    if (player.x + player.w > gate.x - 10 && player.x < gate.x + gate.w) {
+                        player.x = gate.x - player.w - 10;
+                        keys.left = false;
+                        keys.right = false;
+                        openQuestionModal(index);
+                    }
+                }
+            });
+
+            // Graviti
+            player.vy += 0.62;
+            player.y += player.vy;
+            player.grounded = false;
+
+            // Perlanggaran dengan Pelantar
+            platforms.forEach(p => {
+                if (
+                    player.x + player.w - 6 > p.x &&
+                    player.x + 6 < p.x + p.w &&
+                    player.y + player.h >= p.y &&
+                    player.y + player.h <= p.y + player.vy + 14 &&
+                    player.vy >= 0
+                ) {
+                    player.y = p.y - player.h;
+                    player.vy = 0;
+                    player.grounded = true;
+                }
+            });
+
+            // Jika terjatuh ke dalam gaung awan malam
+            if (player.y > canvas.height + 60) {
+                playSound('wrong');
+                lives--;
+                updateHUD();
+                if (lives <= 0) {
+                    triggerEndScreen(false);
+                    return;
+                } else {
+                    showToast('Awas! Kamu terjatuh. Cuba lompat dengan cermat!');
+                    respawnAtCheckpoint();
+                }
+            }
+
+            // Kucing Oren mengikut watak dengan lembut
+            const targetCatX = player.x - (player.facing * 34);
+            catCompanion.x += (targetCatX - catCompanion.x) * 0.12;
+            catCompanion.y += ((player.y + player.h - catCompanion.h) - catCompanion.y) * 0.18;
+            catCompanion.facing = player.facing;
+
+            // Mengumpul Syiling Emas
+            coinItems.forEach(c => {
+                if (!c.collected) {
+                    const dx = (player.x + player.w / 2) - c.x;
+                    const dy = (player.y + player.h / 2) - c.y;
+                    if (Math.hypot(dx, dy) < 38) {
+                        c.collected = true;
+                        coins += 10;
+                        playSound('coin');
+                        updateHUD();
+                        spawnSparkles(c.x, c.y, '#ffd000');
+                    }
+                }
+            });
+
+            // Semak jika sampai ke Pintu Masjid (Garisan Tamat)
+            if (unlockedGates === 4 && player.x > 3160) {
+                playSound('win');
+                triggerEndScreen(true);
+            }
+
+            // Kamera mengikut watak dengan lancar
+            const targetCamX = player.x - canvas.width * 0.32;
+            cameraX += (targetCamX - cameraX) * 0.1;
+            if (cameraX < 0) cameraX = 0;
+            if (cameraX > WORLD_WIDTH - canvas.width) cameraX = Math.max(0, WORLD_WIDTH - canvas.width);
+
+            // Kemas kini zarah kilauan
+            particles.forEach((pt, idx) => {
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.life -= 0.03;
+                if (pt.life <= 0) particles.splice(idx, 1);
+            });
+        }
+
+        function respawnAtCheckpoint() {
+            player.vy = 0;
+            if (unlockedGates === 0) {
+                player.x = 80;
+                player.y = groundY - 60;
+            } else if (unlockedGates === 1) {
+                player.x = 920;
+                player.y = groundY - 100;
+            } else if (unlockedGates === 2) {
+                player.x = 1640;
+                player.y = groundY - 120;
+            } else {
+                player.x = 2380;
+                player.y = groundY - 100;
+            }
+        }
+
+        function spawnSparkles(x, y, color) {
+            for (let i = 0; i < 12; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    color,
+                    life: 1
+                });
+            }
+        }
+
+        /**
+         * ============================================================================
+         * SISTEM SOALAN INTERAKTIF (KLIK & DRAG-AND-DROP)
+         * ============================================================================
+         */
+        let currentQuestionObj = null;
+        let dndPlacements = {}; // Menyimpan padanan drag and drop
+
+        function openQuestionModal(gateIndex) {
+            gameState = 'QUESTION';
+            activeGateIndex = gateIndex;
+            const qList = QUESTION_BANK[currentLevel];
+            currentQuestionObj = qList[gateIndex];
+
+            const modal = document.getElementById('question-modal');
+            const qTypeBadge = document.getElementById('q-type-badge');
+            const qNumBadge = document.getElementById('q-number-badge');
+            const qText = document.getElementById('q-text');
+            const qInstruction = document.getElementById('q-instruction');
+            const mcqContainer = document.getElementById('mcq-container');
+            const dndContainer = document.getElementById('dnd-container');
+            const feedbackBox = document.getElementById('q-feedback');
+
+            feedbackBox.classList.add('hidden');
+            qNumBadge.innerText = `PINTU ILMU ${gateIndex + 1}/4`;
+            qText.innerText = currentQuestionObj.question;
+            qInstruction.innerText = currentQuestionObj.instruction;
+
+            if (currentQuestionObj.type === 'click') {
+                qTypeBadge.innerText = '👆 Soalan Pilihan (Klik)';
+                qTypeBadge.className = 'bg-cyan-500 text-[#081b29] text-xs font-bold px-3 py-1 rounded-full uppercase';
+                mcqContainer.classList.remove('hidden');
+                dndContainer.classList.add('hidden');
+                dndContainer.classList.remove('flex');
+
+                mcqContainer.innerHTML = '';
+                currentQuestionObj.options.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'pixel-btn bg-[#2d1866] hover:bg-[#3f238c] text-white text-left p-4 rounded-2xl font-semibold text-sm md:text-base flex items-center gap-3';
+                    const letters = ['A', 'B', 'C', 'D'];
+                    btn.innerHTML = `
+                        <span class="w-8 h-8 rounded-lg bg-[#ffd000] text-[#1a0b2e] font-pixel text-xs flex items-center justify-center shrink-0">${letters[idx]}</span>
+                        <span>${opt.text}</span>
+                    `;
+                    btn.onclick = () => handleMCQAnswer(opt.correct, btn);
+                    mcqContainer.appendChild(btn);
+                });
+            } else {
+                // Mod Drag and Drop (Seret & Lepas)
+                qTypeBadge.innerText = '✋ Seret & Lepas (Drag & Drop)';
+                qTypeBadge.className = 'bg-[#ff2a85] text-white text-xs font-bold px-3 py-1 rounded-full uppercase';
+                mcqContainer.classList.add('hidden');
+                dndContainer.classList.remove('hidden');
+                dndContainer.classList.add('flex');
+
+                setupDragAndDrop(currentQuestionObj);
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function handleMCQAnswer(isCorrect, clickedBtn) {
+            // Nyahaktifkan semua butang selepas klik
+            const allBtns = document.querySelectorAll('#mcq-container button');
+            allBtns.forEach(b => b.disabled = true);
+
+            if (isCorrect) {
+                clickedBtn.classList.remove('bg-[#2d1866]');
+                clickedBtn.classList.add('bg-emerald-600', 'border-emerald-300');
+                handleQuestionResult(true);
+            } else {
+                clickedBtn.classList.remove('bg-[#2d1866]');
+                clickedBtn.classList.add('bg-rose-600', 'border-rose-300');
+                handleQuestionResult(false);
+            }
+        }
+
+        /**
+         * Logik Drag and Drop yang menyokong Tetikus (Desktop) DAN Sentuhan (Mobile/Tablet)
+         */
+        let selectedTouchItemId = null;
+
+        function setupDragAndDrop(qObj) {
+            dndPlacements = {};
+            selectedTouchItemId = null;
+
+            const itemsContainer = document.getElementById('dnd-items');
+            const zonesContainer = document.getElementById('dnd-zones');
+            itemsContainer.innerHTML = '';
+            zonesContainer.innerHTML = '';
+
+            // Jana Kad untuk Diseret
+            qObj.items.forEach(item => {
+                const card = document.createElement('div');
+                card.id = `drag-${item.id}`;
+                card.draggable = true;
+                card.dataset.itemId = item.id;
+                card.className = 'draggable-item pixel-btn bg-[#351b7a] text-white px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-bold border-2 border-cyan-400';
+                card.innerText = item.text;
+
+                // Desktop Drag Events
+                card.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', item.id);
+                    card.classList.add('opacity-60');
+                });
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('opacity-60');
+                });
+
+                // Sokongan Tap-to-Select untuk skrin sentuh mudah alih
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.draggable-item').forEach(el => {
+                        el.classList.remove('ring-4', 'ring-[#ffd000]');
+                    });
+                    selectedTouchItemId = item.id;
+                    card.classList.add('ring-4', 'ring-[#ffd000]');
+                    showToast('Sekarang klik/sentuh kotak jawapan di bawah!');
+                });
+
+                itemsContainer.appendChild(card);
+            });
+
+            // Jana Zon Lepas (Drop Zones)
+            qObj.zones.forEach(zone => {
+                const zBox = document.createElement('div');
+                zBox.dataset.zoneId = zone.id;
+                zBox.className = 'drop-zone rounded-2xl p-3 min-h-[115px] flex flex-col items-center justify-start gap-2';
+                zBox.innerHTML = `
+                    <p class="font-bold text-xs md:text-sm text-[#ffd000] text-center border-b border-yellow-400/30 w-full pb-1.5">${zone.title}</p>
+                    <div class="zone-slot flex flex-wrap justify-center gap-1.5 w-full min-h-[50px]"></div>
+                `;
+
+                zBox.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zBox.classList.add('drag-over');
+                });
+
+                zBox.addEventListener('dragleave', () => {
+                    zBox.classList.remove('drag-over');
+                });
+
+                zBox.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zBox.classList.remove('drag-over');
+                    const itemId = e.dataTransfer.getData('text/plain');
+                    if (itemId) placeItemInZone(itemId, zone.id, zBox.querySelector('.zone-slot'));
+                });
+
+                // Sokongan Tap-to-Drop bagi peranti sentuh
+                zBox.addEventListener('click', () => {
+                    if (selectedTouchItemId) {
+                        placeItemInZone(selectedTouchItemId, zone.id, zBox.querySelector('.zone-slot'));
+                        selectedTouchItemId = null;
+                    }
+                });
+
+                zonesContainer.appendChild(zBox);
+            });
+        }
+
+        function placeItemInZone(itemId, zoneId, slotElement) {
+            const card = document.getElementById(`drag-${itemId}`);
+            if (!card) return;
+            card.classList.remove('ring-4', 'ring-[#ffd000]');
+            dndPlacements[itemId] = zoneId;
+            slotElement.appendChild(card);
+        }
+
+        function checkDragAndDrop() {
+            const items = currentQuestionObj.items;
+            // Pastikan semua kad telah diletakkan
+            if (Object.keys(dndPlacements).length < items.length) {
+                showToast('Sila masukkan semua kad ke dalam kotak dahulu!');
+                return;
+            }
+
+            let allCorrect = true;
+            items.forEach(item => {
+                if (dndPlacements[item.id] !== item.target) {
+                    allCorrect = false;
+                }
+            });
+
+            document.getElementById('btn-submit-dnd').disabled = true;
+            handleQuestionResult(allCorrect);
+        }
+
+        function handleQuestionResult(isCorrect) {
+            const feedbackBox = document.getElementById('q-feedback');
+            const feedbackTitle = document.getElementById('q-feedback-title');
+            const feedbackDesc = document.getElementById('q-feedback-desc');
+            const btnContinue = document.getElementById('btn-continue');
+
+            feedbackBox.classList.remove('hidden', 'bg-emerald-900/90', 'border-emerald-400', 'bg-rose-900/90', 'border-rose-400');
+
+            if (isCorrect) {
+                playSound('correct');
+                coins += 25;
+                gates[activeGateIndex].unlocked = true;
+                unlockedGates++;
+                spawnSparkles(gates[activeGateIndex].x + 25, gates[activeGateIndex].y + 40, '#00f0ff');
+                updateHUD();
+
+                feedbackBox.classList.add('bg-emerald-900/90', 'border-emerald-400');
+                feedbackTitle.innerText = '🎉 Tahniah! Jawapan Tepat (+25 Syiling)';
+                feedbackDesc.innerText = currentQuestionObj.explanation;
+                btnContinue.innerText = 'Laluan Dibuka! Teruskan ▶';
+            } else {
+                playSound('wrong');
+                lives--;
+                updateHUD();
+
+                feedbackBox.classList.add('bg-rose-900/90', 'border-rose-400');
+                feedbackTitle.innerText = '❌ Kurang Tepat! Cuba Lagi';
+                feedbackDesc.innerText = `Nota Ilmu: ${currentQuestionObj.explanation}`;
+                btnContinue.innerText = lives > 0 ? 'Cuba Semula Pintu Ini 🔄' : 'Tamat Permainan';
+            }
+        }
+
+        function closeQuestionModal() {
+            document.getElementById('question-modal').classList.add('hidden');
+            document.getElementById('btn-submit-dnd').disabled = false;
+
+            if (lives <= 0) {
+                triggerEndScreen(false);
+                return;
+            }
+
+            gameState = 'PLAYING';
+        }
+
+        function triggerEndScreen(isWin) {
+            gameState = isWin ? 'WIN' : 'GAMEOVER';
+            stopBGM();
+            const endScreen = document.getElementById('end-screen');
+            const endIcon = document.getElementById('end-icon');
+            const endTitle = document.getElementById('end-title');
+            const endSubtitle = document.getElementById('end-subtitle');
+
+            if (isWin) {
+                endIcon.innerText = '🕌✨';
+                endTitle.innerText = 'ALHAMDULILLAH! MISI BERJAYA';
+                endTitle.className = 'font-pixel text-lg md:text-2xl text-[#ffd000] mb-2 leading-relaxed';
+                endSubtitle.innerText = 'Kamu berjaya menguasai tajuk Perkara-Perkara Yang Membatalkan Puasa dan tiba di Masjid Cahaya Ramadan!';
+            } else {
+                endIcon.innerText = '💔🌙';
+                endTitle.innerText = 'NYAWA TAMAT! CUBA LAGI';
+                endTitle.className = 'font-pixel text-lg md:text-2xl text-rose-400 mb-2 leading-relaxed';
+                endSubtitle.innerText = 'Jangan berputus asa! Ulang kaji nota ilmu dan cuba lagi untuk membantu watak sampai ke Masjid.';
+            }
+
+            document.getElementById('end-coins').innerText = `${coins} 🪙`;
+            document.getElementById('end-level').innerText = `Tahap ${currentLevel}`;
+            endScreen.classList.remove('hidden');
+        }
+
+        /**
+         * ============================================================================
+         * LUKISAN GRAFIK PIXEL & KARTUN BERTEMAKAN GAMBAR RUJUKAN (RENDER LOOP)
+         * ============================================================================
+         */
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Langit Malam Ramadan Bergradien
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGrad.addColorStop(0, '#09051f');
+            skyGrad.addColorStop(0.55, '#1e104d');
+            skyGrad.addColorStop(1, '#4a2382');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Bulan Sabit Emas Bercahaya (Sebelah Kanan Atas)
+            const moonX = canvas.width - 110;
+            const moonY = 85;
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 224, 102, 0.15)';
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, 52, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffe66d';
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, 32, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#120833';
+            ctx.beginPath();
+            ctx.arc(moonX - 12, moonY - 8, 28, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 3. Bintang Berkelip (Parallax)
+            const time = Date.now() * 0.003;
+            stars.forEach(s => {
+                const screenX = (s.x - cameraX * 0.2) % canvas.width;
+                const drawX = screenX < 0 ? screenX + canvas.width : screenX;
+                const alpha = 0.4 + Math.sin(time + s.twinkle) * 0.5;
+                ctx.fillStyle = `rgba(255, 250, 200, ${alpha})`;
+                ctx.fillRect(drawX, s.y, s.size, s.size);
+            });
+
+            // 4. Siluet Bandar & Kubah Masjid di Latar Belakang (Parallax)
+            drawCitySilhouette();
+
+            // 4b. Panji & Bingkai Hiasan Atas (Seperti Gambar Rujukan)
+            drawTopBanners();
+
+            // 5. Awan Ungu Gebu (Parallax)
+            clouds.forEach(c => {
+                const drawX = c.x - cameraX * 0.45;
+                if (drawX + c.w > -50 && drawX < canvas.width + 50) {
+                    ctx.fillStyle = 'rgba(92, 54, 158, 0.55)';
+                    ctx.beginPath();
+                    ctx.roundRect(drawX, c.y, c.w, c.h, 20);
+                    ctx.arc(drawX + c.w * 0.3, c.y, 24, 0, Math.PI * 2);
+                    ctx.arc(drawX + c.w * 0.65, c.y - 5, 28, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            ctx.save();
+            ctx.translate(-cameraX, 0);
+
+            // 6. Masjid Cahaya Ramadan di Pulau Akhir (Destinasi Utama)
+            drawGrandMosque(3160, groundY - 160);
+
+            // 7. Pelantar Tanah & Pelantar Terapung Bercahaya
+            platforms.forEach(p => {
+                if (p.type === 'floating') {
+                    // Pelantar batu terapung ungu dengan permukaan emas bercahaya (seperti gambar)
+                    ctx.fillStyle = '#2d1659';
+                    ctx.beginPath();
+                    ctx.roundRect(p.x, p.y, p.w, p.h, 8);
+                    ctx.fill();
+
+                    // Jalur permukaan emas bercahaya
+                    ctx.fillStyle = '#ffd000';
+                    ctx.fillRect(p.x + 8, p.y, p.w - 16, 6);
+                    ctx.fillStyle = '#ff2a85';
+                    ctx.fillRect(p.x + 14, p.y + 6, p.w - 28, 4);
+                } else {
+                    // Pulau tanah berlumut hijau & batu ungu
+                    ctx.fillStyle = '#221047';
+                    ctx.fillRect(p.x, p.y, p.w, p.h);
+                    // Rumput hijau zamrud di atas
+                    ctx.fillStyle = '#18a874';
+                    ctx.fillRect(p.x, p.y, p.w, 12);
+                    ctx.fillStyle = '#2ee6a3';
+                    ctx.fillRect(p.x, p.y, p.w, 4);
+                }
+            });
+
+            // 8. Tanglung Ramadan Bercahaya & Papan Tanda Arah di setiap checkpoint
+            drawLantern(380, groundY - 46);
+            drawSignpost(200, groundY - 68);
+            drawLantern(890, groundY - 86);
+            drawLantern(1610, groundY - 106);
+            drawLantern(2350, groundY - 86);
+            drawSignpost(2540, groundY - 108);
+
+            // 9. Pintu Ilmu (Kitab Bercahaya)
+            gates.forEach((g, idx) => {
+                drawKnowledgeGate(g, idx);
+            });
+
+            // 10. Syiling Emas Berpusing
+            coinItems.forEach(c => {
+                if (!c.collected) {
+                    const bobY = c.y + Math.sin(Date.now() * 0.005 + c.x) * 5;
+                    // Cahaya luar
+                    ctx.fillStyle = 'rgba(255, 208, 0, 0.25)';
+                    ctx.beginPath();
+                    ctx.arc(c.x, bobY, 17, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Syiling emas
+                    ctx.fillStyle = '#ffd000';
+                    ctx.beginPath();
+                    ctx.arc(c.x, bobY, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#b87400';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Simbol bulan sabit kecil dalam syiling
+                    ctx.fillStyle = '#fff5b8';
+                    ctx.fillRect(c.x - 2, bobY - 5, 4, 10);
+                }
+            });
+
+            // 11. Kucing Oren Comel (Sahabat Watak)
+            drawCat(catCompanion);
+
+            // 12. Watak Utama (Budak Lelaki Berbeg Bulan Sabit seperti Gambar)
+            drawPlayer(player);
+
+            // 13. Zarah Kilauan
+            particles.forEach(pt => {
+                ctx.globalAlpha = pt.life;
+                ctx.fillStyle = pt.color;
+                ctx.fillRect(pt.x, pt.y, 5, 5);
+            });
+            ctx.globalAlpha = 1;
+
+            ctx.restore();
+        }
+
+        function drawCitySilhouette() {
+            ctx.fillStyle = '#140a36';
+            for (let i = 0; i < 12; i++) {
+                const bx = (i * 180 - cameraX * 0.25) % (canvas.width + 200);
+                const drawX = bx < -100 ? bx + canvas.width + 200 : bx;
+                const by = canvas.height - 130;
+                ctx.fillRect(drawX, by, 90, 130);
+                // Kubah kecil
+                ctx.beginPath();
+                ctx.arc(drawX + 45, by, 28, Math.PI, 0);
+                ctx.fill();
+            }
+        }
+
+        function drawTopBanners() {
+            // Panji unggu dengan simbol bulan sabit di bahagian atas skrin
+            const bannerPositions = [canvas.width * 0.22, canvas.width * 0.72];
+            bannerPositions.forEach(bx => {
+                ctx.fillStyle = '#3b1578';
+                ctx.beginPath();
+                ctx.moveTo(bx, 0);
+                ctx.lineTo(bx + 44, 0);
+                ctx.lineTo(bx + 44, 48);
+                ctx.lineTo(bx + 22, 62);
+                ctx.lineTo(bx, 48);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.strokeStyle = '#ff2a85';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Bulan sabit kecil pada panji
+                ctx.fillStyle = '#ffd000';
+                ctx.beginPath();
+                ctx.arc(bx + 22, 26, 9, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#3b1578';
+                ctx.beginPath();
+                ctx.arc(bx + 18, 24, 7, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawSignpost(x, y) {
+            // Tiang kayu papan tanda
+            ctx.fillStyle = '#5c2d16';
+            ctx.fillRect(x + 18, y, 8, 68);
+            // Papan arah 1 (Masjid)
+            ctx.fillStyle = '#854422';
+            ctx.fillRect(x, y + 8, 44, 16);
+            ctx.fillStyle = '#ffd000';
+            ctx.fillRect(x + 16, y + 12, 12, 8);
+            // Papan arah 2 (Kitab)
+            ctx.fillStyle = '#6e3619';
+            ctx.fillRect(x + 2, y + 28, 42, 16);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x + 16, y + 32, 12, 8);
+        }
+
+        function drawLantern(x, y) {
+            // Tiang kecil
+            ctx.fillStyle = '#4a2511';
+            ctx.fillRect(x + 10, y + 26, 6, 20);
+            // Badan tanglung
+            ctx.fillStyle = '#ff9100';
+            ctx.fillRect(x + 4, y + 6, 18, 20);
+            ctx.fillStyle = '#fff380';
+            ctx.fillRect(x + 8, y + 10, 10, 12);
+            // Bumbung tanglung
+            ctx.fillStyle = '#2b124c';
+            ctx.beginPath();
+            ctx.moveTo(x + 13, y);
+            ctx.lineTo(x + 25, y + 7);
+            ctx.lineTo(x + 1, y + 7);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawKnowledgeGate(g, idx) {
+            if (g.unlocked) {
+                // Pintu sudah terbuka (Bercahaya Hijau Zamrud)
+                ctx.fillStyle = 'rgba(46, 230, 163, 0.25)';
+                ctx.fillRect(g.x, g.y, g.w, g.h);
+                ctx.strokeStyle = '#2ee6a3';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(g.x, g.y, g.w, g.h);
+                ctx.fillStyle = '#2ee6a3';
+                ctx.font = 'bold 14px Fredoka';
+                ctx.fillText('✔ DIBUKA', g.x - 6, g.y - 10);
+            } else {
+                // Pintu Ilmu Berkunci (Kitab Al-Quran Ungu-Emas)
+                ctx.fillStyle = '#3c1874';
+                ctx.fillRect(g.x, g.y, g.w, g.h);
+                ctx.strokeStyle = '#ffd000';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(g.x, g.y, g.w, g.h);
+
+                // Ikon Buku & Tanda Seru '!'
+                const floatY = Math.sin(Date.now() * 0.006) * 4;
+                ctx.fillStyle = '#ff2a85';
+                ctx.beginPath();
+                ctx.roundRect(g.x + 12, g.y - 34 + floatY, 30, 24, 6);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText('!', g.x + 24, g.y - 16 + floatY);
+
+                ctx.fillStyle = '#ffd000';
+                ctx.font = 'bold 12px Fredoka';
+                ctx.fillText(`SOALAN ${idx + 1}`, g.x - 2, g.y + g.h / 2 + 4);
+            }
+        }
+
+        function drawGrandMosque(x, y) {
+            // Badan Masjid
+            ctx.fillStyle = '#3b2075';
+            ctx.fillRect(x, y - 90, 180, 90);
+            // Kubah Utama
+            ctx.fillStyle = '#5c33b8';
+            ctx.beginPath();
+            ctx.arc(x + 90, y - 90, 50, Math.PI, 0);
+            ctx.fill();
+            // Bulan Sabit di Puncak Kubah
+            ctx.fillStyle = '#ffd000';
+            ctx.beginPath();
+            ctx.arc(x + 90, y - 152, 10, 0, Math.PI * 2);
+            ctx.fill();
+            // Menara Kiri & Kanan
+            ctx.fillStyle = '#4c2999';
+            ctx.fillRect(x - 20, y - 130, 22, 130);
+            ctx.fillRect(x + 178, y - 130, 22, 130);
+            // Pintu Gerbang Cahaya Emas
+            ctx.fillStyle = '#ffd000';
+            ctx.beginPath();
+            ctx.arc(x + 90, y - 35, 22, Math.PI, 0);
+            ctx.fillRect(x + 68, y - 35, 44, 35);
+            ctx.fill();
+        }
+
+        function drawCat(cat) {
+            ctx.save();
+            ctx.translate(cat.x + cat.w / 2, cat.y);
+            ctx.scale(cat.facing, 1);
+
+            // Badan kucing oren
+            ctx.fillStyle = '#ff9838';
+            ctx.fillRect(-10, 8, 20, 14);
+            // Kepala
+            ctx.fillRect(2, 0, 14, 12);
+            // Telinga
+            ctx.fillRect(3, -4, 4, 4);
+            ctx.fillRect(11, -4, 4, 4);
+            // Perut putih
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(6, 10, 8, 10);
+            // Ekor
+            ctx.fillStyle = '#ff9838';
+            ctx.fillRect(-15, 2, 5, 10);
+
+            ctx.restore();
+        }
+
+        function drawPlayer(p) {
+            ctx.save();
+            ctx.translate(p.x + p.w / 2, p.y);
+            ctx.scale(p.facing, 1);
+
+            const legSwing = Math.sin(p.walkFrame) * 5;
+
+            // Kaki & Kasut
+            ctx.fillStyle = '#1e1b4b';
+            ctx.fillRect(-9 + legSwing, 34, 7, 14);
+            ctx.fillRect(2 - legSwing, 34, 7, 14);
+            // Kasut merah-putih
+            ctx.fillStyle = '#ff2a85';
+            ctx.fillRect(-9 + legSwing, 46, 9, 6);
+            ctx.fillRect(2 - legSwing, 46, 9, 6);
+
+            // Baju Putih
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(-11, 18, 22, 18);
+
+            // Beg Galas Biru dengan Bulan Sabit Emas (Seperti gambar rujukan!)
+            ctx.fillStyle = '#2563eb';
+            ctx.fillRect(-17, 19, 8, 16);
+            ctx.fillStyle = '#ffd000';
+            ctx.fillRect(-15, 24, 4, 6);
+
+            // Kepala
+            ctx.fillStyle = '#ffcca8';
+            ctx.fillRect(-10, 2, 20, 17);
+
+            // Rambut Hitam Kemas
+            ctx.fillStyle = '#140c24';
+            ctx.fillRect(-12, -2, 24, 9);
+            ctx.fillRect(-12, 4, 6, 10);
+
+            // Mata
+            ctx.fillStyle = '#140c24';
+            ctx.fillRect(4, 9, 3, 4);
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // Mulakan saiz kanvas & latar belakang semasa halaman dimuatkan
+        window.onload = function () {
+            resizeCanvas();
+            draw();
+        };
+    </script>
+</body>
+</html>
